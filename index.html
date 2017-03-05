@@ -56,26 +56,33 @@
 		text-align: left;
 	}
 
-	</style>	
+	#userSelector{
+		padding-bottom: 2px;
+	}
+
+	</style>
 	<div>
 		Each group member is represented by a circle. The size of the circle denotes the number of messages sent by the member. 
 		The link between any two members represents a measure of how often the two members send messages around each other. So if two members often send messages close to each other, then it's likely that they are often involved in the same conversation. Thus invariably, more active members will be around the centre while dormant members are, literally, on the fringes!
-		
+
 		<p><b>Double-click</b> on a circle to look at links for the corresponding group member.</p>
-	</div>		
+	</div>
+	
 	<div id="container">
 		<div id="chartContainer"><svg width="1100" height="1000"></svg></div>
 		<div id="userDetailsContainer">
-			<div id="userName"></div>
-			<div class="userDetailsRow">
-				<div>Messages Sent:</div>
-				<div id="MessagesSent"></div>
+			<div><select id="userSelector"></select></div>	
+			<div id="userStats">
+				<!--<div id="userName"></div>-->
+				<div class="userDetailsRow">
+					<div>Messages Sent:</div>
+					<div id="MessagesSent"></div>
+				</div>
+				<div class="userDetailsRow">
+					<div>% of Messages Sent:</div>
+					<div id="PercentMessagesSent"></div>
+				</div>
 			</div>
-			<div class="userDetailsRow">
-				<div>% of Messages Sent:</div>
-				<div id="PercentMessagesSent"></div>
-			</div>
-
 		</div>
 	</div>
 	<script src="https://d3js.org/d3.v4.min.js"></script>
@@ -83,6 +90,7 @@
 	<script type="text/javascript">
 
 		var color = d3.scaleOrdinal(d3.schemeCategory20);
+		var data;
 		function viewOnlyThisNode(){
 			
 			var selectedSender = $(this).attr('sender');
@@ -99,10 +107,11 @@
 				$(".links line[target='"+selectedSender+"']").show();
 				$(this).attr('data-node-selected','Yes');
 
-				$("#userName").text($(this)[0].__data__['id']);
+				//$("#userName").text($(this)[0].__data__['id']);
 				$("#MessagesSent").text($(this)[0].__data__['MessageCount']);
 				$("#PercentMessagesSent").text($(this)[0].__data__['MessagePercentage']+'%');
-				$("#userDetailsContainer").show();
+				$("#userStats").show();
+				$("#userSelector").val(selectedSender);
 
 			}
 			else{
@@ -110,9 +119,18 @@
 				$(".nodes circle").attr('fill',color(2));
 				$(".links line").show();
 				$(this).attr('data-node-selected','No');
-				$("#userDetailsContainer").hide();
+				$("#userStats").hide();
+				$("#userSelector").val(0);
 			}
 			
+
+		}
+
+		function onUserSelect(){
+			selectedUser = $("#userSelector").val();
+			if(selectedUser != 0){
+				$(".nodes circle[Sender = '"+selectedUser+"']").dblclick();
+			}
 
 		}
 
@@ -120,7 +138,7 @@
 		var width = svg.attr("width");
 		var height = svg.attr("height");
 
-		$("#userDetailsContainer").hide();
+		$("#userStats").hide();
 		
 		var scaleLinkDistance = d3.scaleLinear().domain([9466, 81091]).range([150, 800]);
 		var scaleNodeSize = d3.scaleLinear().domain([0, 6500]).range([10, 40]);
@@ -131,9 +149,11 @@
 		    .force("center", d3.forceCenter(width / 2, height / 2 + 20))
 		    ;
 
+		//d3.json("static/forceData.json", function(error, graph) {
 		d3.json("https://mancunian-red-devil.github.io/SNESAnalytics/static/forceData.json", function(error, graph) {
 		  if (error) throw error;
-
+		  console.log('Received data');
+		  data = graph;
 		  var link = svg.append("g")
 		      .attr("class", "links")
 		    .selectAll("line")
@@ -170,7 +190,18 @@
 
 		  simulation.force("link")
 		      .links(graph.links);
+			var optionElement = $('<option></option>');
+			$(optionElement).attr('value',0).append('--Select--');
+		   	$("#userSelector").append(optionElement);
 
+			((data.nodes).map(function(d){return d.id}).sort()).forEach(function(d){
+		   	var optionElement = $('<option></option>');
+		   	$(optionElement).attr('value',d.id).append(d);
+		   	$("#userSelector").append(optionElement);
+
+		   });
+
+			$("#userSelector").change(onUserSelect);
 		  function ticked() {
 		    link
 		        .attr("x1", function(d) { return d.source.x; })
