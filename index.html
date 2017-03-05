@@ -144,17 +144,18 @@
 
 		$("#userStats").hide();
 		
-		var scaleLinkDistance = d3.scaleLinear().domain([9466, 81091]).range([150, 800]);
+		var scaleLinkDistance = d3.scaleLinear().domain([Math.sqrt(9466), Math.sqrt(81091)]).range([150, 800]);
+		//var scaleLinkDistance = d3.scaleLinear().domain([9466, 81091]).range([150, 800]);
 		var scaleNodeSize = d3.scaleLinear().domain([0, 6500]).range([10, 40]);
 		var simulation = d3.forceSimulation()
-		    .force("link", d3.forceLink().id(function(d) {return d.id; }).distance(function(d,i){return scaleLinkDistance(d.value);}))
+		    .force("link", d3.forceLink().id(function(d) {return d.id; }).distance(function(d,i){return scaleLinkDistance(Math.sqrt(d.value));}))
 		    .force("charge", d3.forceManyBody())
 		    .force("collide", d3.forceCollide().radius(function(d) { return scaleNodeSize(d.MessageCount) + 0.5; }).iterations(2))
 		    .force("center", d3.forceCenter(width / 2, height / 2 + 20))
 		    ;
 
-		//d3.json("static/forceData.json", function(error, graph) {
-		d3.json("https://mancunian-red-devil.github.io/SNESAnalytics/static/forceData.json", function(error, graph) {
+		d3.json("static/forceData.json", function(error, graph) {
+		//d3.json("https://mancunian-red-devil.github.io/SNESAnalytics/static/forceData.json", function(error, graph) {
 		  if (error) throw error;
 		  console.log('Received data');
 		  data = graph;
