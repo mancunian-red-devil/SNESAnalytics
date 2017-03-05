@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title></title>
+	<style>
+
+	.links line {
+	  stroke: #999;
+	  stroke-opacity: 0.6;
+	}
+
+	.nodes circle {
+	  stroke: #fff;
+	  stroke-width: 1.5px;
+	  cursor: pointer;
+	}
+
+	.nodes circle.selectedCircle {
+	  stroke: #fff;
+	  stroke-width: 1.5px;
+	}
+
+	svg{
+		border: 0px solid;
+	}
+
+	#container{
+		display: flex;
+	}
+
+
+	.userDetailsRow{
+		display: flex;
+		justify-content: space-between;
+	}
+
+	#userName{
+		color: blue;
+		font-weight: 800;
+	}
+
+	#userDetailsContainer{
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		padding-left: 5px;
+		padding-right: 5px;
+
+	}
+	.userDetailsRow div:first-child{
+		font-weight: 800;
+		padding-right: 10px;
+	}
+
+	.userDetailsRow div:nth-child(2){
+		text-align: left;
+	}
+
+	</style>	
+	<div id="container">
+		<div id="chartContainer"><svg width="1100" height="1000"></svg></div>
+		<div id="userDetailsContainer">
+			<div id="userName"></div>
+			<div class="userDetailsRow">
+				<div>Messages Sent:</div>
+				<div id="MessagesSent"></div>
+			</div>
+			<div class="userDetailsRow">
+				<div>% of Messages Sent:</div>
+				<div id="PercentMessagesSent"></div>
+			</div>
+
+		</div>
+	</div>
+	<script src="https://d3js.org/d3.v4.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+	<script type="text/javascript">
+
+		var color = d3.scaleOrdinal(d3.schemeCategory20);
+		function viewOnlyThisNode(){
+			
+			var selectedSender = $(this).attr('sender');
+			if($(this).attr('data-node-selected') == 'No'){
+				$(".nodes circle").attr('data-node-selected','No');
+				$(".nodes circle").attr('fill',color(2));
+				$(this).attr('fill','#ff7f0e');
+				$(".links line").hide();
+				$(".links line").attr('stroke-width',1);
+				$(".links line[source='"+selectedSender+"']").attr('stroke-width',4);
+				$(".links line[target='"+selectedSender+"']").attr('stroke-width',4);
+
+				$(".links line[source='"+selectedSender+"']").show();
+				$(".links line[target='"+selectedSender+"']").show();
+				$(this).attr('data-node-selected','Yes');
+
+				$("#userName").text($(this)[0].__data__['id']);
+				$("#MessagesSent").text($(this)[0].__data__['MessageCount']);
+				$("#PercentMessagesSent").text($(this)[0].__data__['MessagePercentage']+'%');
+				$("#userDetailsContainer").show();
+
+			}
+			else{
+				$(".links line").attr('stroke-width',1);
+				$(".nodes circle").attr('fill',color(2));
+				$(".links line").show();
+				$(this).attr('data-node-selected','No');
+				$("#userDetailsContainer").hide();
+			}
+			
+
+		}
+
+		var svg = d3.select("svg");
+		var width = svg.attr("width");
+		var height = svg.attr("height");
+
+		$("#userDetailsContainer").hide();
+		
+		var scaleLinkDistance = d3.scaleLinear().domain([9466, 81091]).range([150, 800]);
+		var scaleNodeSize = d3.scaleLinear().domain([0, 6500]).range([10, 40]);
+		var simulation = d3.forceSimulation()
+		    .force("link", d3.forceLink().id(function(d) {return d.id; }).distance(function(d,i){return scaleLinkDistance(d.value);}))
+		    .force("charge", d3.forceManyBody())
+		    .force("collide", d3.forceCollide().radius(function(d) { return scaleNodeSize(d.MessageCount) + 0.5; }).iterations(10))
+		    .force("center", d3.forceCenter(width / 2, height / 2 + 20))
+		    ;
+
+		d3.json("static/forceData.json", function(error, graph) {
+		  if (error) throw error;
+
+		  var link = svg.append("g")
+		      .attr("class", "links")
+		    .selectAll("line")
+		    .data(graph.links)
+		    .enter().append("line")
+		    .attr('source', function(d){return d.source;})
+		    .attr('target', function(d){return d.target;})
+		    .attr("stroke-width", function(d) { return 1; });
+
+		  link.append("title").text(function(d) { return d.source + ' - ' + d.target + ': '+d.value; });
+
+		  var node = svg.append("g")
+		      .attr("class", "nodes")
+		    .selectAll("circle")
+		    .data(graph.nodes)
+		    .enter().append("circle")
+		      .attr("r", function(d){return scaleNodeSize(d.MessageCount)})
+		      .attr("fill", function(d) { return color(2); })
+		      .attr("sender", function(d) { return (d.id); })
+		      .attr("data-node-selected", function(d) { return ("No"); })
+		      .call(d3.drag()
+		          .on("start", dragstarted)
+		          .on("drag", dragged)
+		          .on("end", dragended));
+
+		  node.append("title")
+		      .text(function(d) { return d.id + ": "+d.MessageCount+" messages ("+d.MessagePercentage+"%)"; });
+		  
+		  $(".nodes circle").dblclick(viewOnlyThisNode);
+		  
+		  simulation
+		      .nodes(graph.nodes)
+		      .on("tick", ticked);
+
+		  simulation.force("link")
+		      .links(graph.links);
+
+		  function ticked() {
+		    link
+		        .attr("x1", function(d) { return d.source.x; })
+		        .attr("y1", function(d) { return d.source.y; })
+		        .attr("x2", function(d) { return d.target.x; })
+		        .attr("y2", function(d) { return d.target.y; });
+
+		    node
+		        .attr("cx", function(d) { return d.x; })
+		        .attr("cy", function(d) { return d.y; });
+		  }
+		});
+
+		function dragstarted(d) {
+		  if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+		  d.fx = d.x;
+		  d.fy = d.y;
+		}
+
+		function dragged(d) {
+		  d.fx = d3.event.x;
+		  d.fy = d3.event.y;
+		}
+
+
+
+		function dragended(d) {
+		  if (!d3.event.active) simulation.alphaTarget(0);
+		  d.fx = null;
+		  d.fy = null;
+		}		
+	</script>
+
+
+
+</head>
+<body>
+	
+
+
+
+</body>
+</html>
