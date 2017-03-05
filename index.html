@@ -134,6 +134,10 @@
 
 		}
 
+		function onCircleClick(){
+			//console.log('Circle clicked');
+		}
+
 		var svg = d3.select("svg");
 		var width = svg.attr("width");
 		var height = svg.attr("height");
@@ -183,6 +187,7 @@
 		      .text(function(d) { return d.id + ": "+d.MessageCount+" messages ("+d.MessagePercentage+"%)"; });
 		  
 		  $(".nodes circle").dblclick(viewOnlyThisNode);
+		  $(".nodes circle").click(onCircleClick);
 		  
 		  simulation
 		      .nodes(graph.nodes)
@@ -216,7 +221,8 @@
 		});
 
 		function dragstarted(d) {
-		  if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+		  if (!d3.event.active) simulation.alphaTarget(0.1).alphaDecay(0.001).alpha(0.99).restart();
+		  //if (!d3.event.active) simulation.alphaTarget(0.3).restart();
 		  d.fx = d.x;
 		  d.fy = d.y;
 		}
@@ -229,7 +235,7 @@
 
 
 		function dragended(d) {
-		  if (!d3.event.active) simulation.alphaTarget(0);
+		  if (!d3.event.active) simulation.alphaTarget(0).alphaDecay(0.001).alpha(0.99).restart();
 		  d.fx = null;
 		  d.fy = null;
 		}		
